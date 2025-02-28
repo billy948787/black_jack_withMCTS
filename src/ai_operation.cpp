@@ -7,7 +7,7 @@
 #include "mcts.h"
 const int sleepTime = 2000;
 
-const int simulations = 550000;
+const int simulations = 100000;
 
 bool AIOperation::hit(std::vector<Poker> playerCards,
                       std::vector<Poker> dealerVisibleCards,
