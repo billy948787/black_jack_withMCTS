@@ -1,6 +1,7 @@
 #ifndef AI_OPERATION_H
 #define AI_OPERATION_H
 #include "operation.h"
+#include "mcts.h"
 
 class AIOperation : public Operation {
  public:

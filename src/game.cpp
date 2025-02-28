@@ -121,6 +121,7 @@ void Game::start(bool isTestMode) {
     return;
   }
 
+  // normal game start
   std::cout << "Game start!"
             << "\n";
   // input the player count
@@ -133,7 +134,7 @@ void Game::start(bool isTestMode) {
   std::string name;
   std::cin >> name;
   // create player
-  _players.push_back(Player(name, *new ManualOperation()));
+  _players.push_back(Player(name, *new DefaultOperation()));
 
   for (int i = 1; i < _playerCount; i++) {
     _players.push_back(
@@ -306,7 +307,10 @@ void Game::_printAction(std::string action, bool isAI) {
 
 void Game::_initCardPool() {
   // clear the pool first
-  if (!_cardPool.empty()) _cardPool.clear();
+  if (_cardPool.size() < 52)
+    _cardPool.clear();
+  else
+    return;
   // add the cards to the pool
   for (int deck = 0; deck < 4; deck++) {
     for (int i = 0; i < 4; i++) {
@@ -542,8 +546,11 @@ void Game::_askInsuranceForAllPlayers() {
 
     if (_banker->getPokers()[0].getNumber() == "A") {
       std::vector<Poker> dealerVisibleCards = {_banker->getPokers().front()};
+      std::vector<Poker> knownCardPool = _cardPool;
+      knownCardPool.push_back(_banker->getPokers()[1]);
+
       bool takeInsurance = player._operationController.insurance(
-          player.getPokers(), dealerVisibleCards, _cardPool);
+          player.getPokers(), dealerVisibleCards, knownCardPool);
       if (takeInsurance) {
         player._hasInsurance = true;
 
@@ -563,10 +570,12 @@ void Game::_askForDoubleOrSurrender() {
     std::cout << player.getName() << " : ";
 
     std::vector<Poker> dealerVisibleCards = {_banker->getPokers().front()};
+    std::vector<Poker> knownCardPool = _cardPool;
+    knownCardPool.push_back(_banker->getPokers()[1]);
 
     std::map<std::string, bool> result =
         player._operationController.doubleOrSurrender(
-            player.getPokers(), dealerVisibleCards, _cardPool);
+            player.getPokers(), dealerVisibleCards, knownCardPool);
 
     if (result["double"]) {
       _printAction("double down", player._isAI);
@@ -615,9 +624,11 @@ void Game::_drawForAllPlayers() {
 
       std::cout << player.getName() << " : ";
       std::vector<Poker> dealerVisibleCards = {_banker->getPokers().front()};
+      std::vector<Poker> knownCardPool = _cardPool;
+      knownCardPool.push_back(_banker->getPokers()[1]);
 
       bool toHit = player._operationController.hit(
-          player.getPokers(), dealerVisibleCards, _cardPool);
+          player.getPokers(), dealerVisibleCards, knownCardPool);
 
       if (toHit) {
         Dealer::deal(player, _cardPool, false);
@@ -644,38 +655,60 @@ void Game::_drawForAllPlayers() {
 }
 
 void Game::_drawForBanker() {
-  // flip the card back
+  // 翻開莊家的第二張牌
   _banker->getPokers()[1].flipTheCard();
 
-  while (_banker->getPoint() < 17) {
-    Dealer::deal(*_banker, _cardPool, false);
-  }
-
+  // 顯示莊家當前牌
   std::cout << _banker->getName() << "(banker)"
-            << " :  has got these cards now:\n\n";
+            << " : has got these cards now:\n\n";
   std::cout << "Point : " << _banker->getPoint() << "\n";
   Poker::printPokers(_banker->getPokers());
 
-  bool toHit = true;
+  // 莊家按H17規則抽牌：小於17點必須抽牌，軟17點也必須抽牌
+  while ((_banker->getPoint() < 17) ||
+         (_banker->getPoint() == 17 && _isSoft17(_banker->getPokers()))) {
+    // 抽一張牌
+    Dealer::deal(*_banker, _cardPool, false);
 
-  while (toHit) {
+    // 顯示莊家當前牌
+    std::cout << _banker->getName() << "(banker)"
+              << " : has got these cards now:\n\n";
+    std::cout << "Point : " << _banker->getPoint() << "\n";
+    Poker::printPokers(_banker->getPokers());
+
+    // 如果超過21點，顯示爆牌並結束
     if (_banker->getPoint() > 21) {
       std::cout << _banker->getName() << "(banker)"
-                << " :  has busted.\n";
-
+                << " : has busted.\n";
       return;
     }
-    toHit = _banker->_operationController.hit(_banker->getPokers(),
-                                              _banker->getPokers(), _cardPool);
+  }
 
-    if (toHit) {
-      Dealer::deal(*_banker, _cardPool, false);
-      std::cout << _banker->getName() << "(banker)"
-                << " :  has got these cards now:\n\n";
-      std::cout << "Point : " << _banker->getPoint() << "\n";
-      Poker::printPokers(_banker->getPokers());
+  // 莊家已達到17點或以上（且不是軟17），停止抽牌
+  std::cout << _banker->getName() << "(banker)"
+            << " : stands with " << _banker->getPoint() << " points.\n";
+}
+
+// 判斷是否為軟17點 (有A且A算作11時總點數為17)
+bool Game::_isSoft17( std::vector<Poker> &cards) {
+  bool hasAce = false;
+  int sum = 0;
+
+  // 先計算所有牌的點數，Ace算作1點
+  for (auto &card : cards) {
+    if (card.getNumber() == "A") {
+      hasAce = true;
+      sum += 1;
+    } else if (card.getNumber() == "J" || card.getNumber() == "Q" ||
+               card.getNumber() == "K") {
+      sum += 10;
+    } else {
+      sum += std::stoi(card.getNumber());
     }
   }
+
+  // 如果有Ace且將其中一張Ace算作11點後總點數為17，則為軟17
+  return hasAce && (sum + 10 == 17);
 }
 
 void Game::_settle() {

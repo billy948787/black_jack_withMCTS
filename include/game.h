@@ -4,6 +4,7 @@
 
 #include "ai_operation.h"
 #include "dealer.h"
+#include "default_operation.h"
 #include "manual_operation.h"
 #include "operation.h"
 #include "operation_controller.h"
@@ -57,7 +58,7 @@ class Game {
   void _settle();
 
   void _kickOut();
-
+  bool _isSoft17(std::vector<Poker> &cards);
   friend class Operation;
 
  public:

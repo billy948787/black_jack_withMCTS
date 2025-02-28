@@ -4,10 +4,15 @@
 #include <memory>
 #include <algorithm>
 #include <random>
+#include <thread>
+#include <atomic>
 
 #include "poker.h"
+#include "thread_pool.h"
 
 #define MAX_CHILDREN 5
+
+#define PLAYOUT_TIMES 20
 
 namespace mcts {
 
@@ -59,5 +64,7 @@ class MCTS {
   std::vector<Poker> _dealerVisibleCards;
 
   std::shared_ptr<Node> _root;
+
+  std::unique_ptr<ThreadPool> _threadPool;
 };
 }  // namespace mcts
