@@ -8,7 +8,7 @@ int main() {
 
   std::cout << DEFAULT << "Welcome to BlackJack\n";
 
-  bool isTestMode = true;
+  bool isTestMode = false;
 
   game.start(isTestMode);
 }

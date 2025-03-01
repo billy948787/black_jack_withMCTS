@@ -12,7 +12,7 @@
 
 #define MAX_CHILDREN 5
 
-#define PLAYOUT_TIMES 100
+#define PLAYOUT_TIMES 200
 
 namespace mcts {
 

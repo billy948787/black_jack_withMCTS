@@ -41,18 +41,13 @@ std::shared_ptr<mcts::Node> mcts::MCTS::run() {
     if (node->visits != 0) {
       expansion(node);
 
-      bool hasChildren = false;
+      auto child = selection(node);
 
-      for (int j = 0; j < MAX_CHILDREN; ++j) {
-        if (node->children[j] == nullptr) continue;
-        double result = playout(node->children[j]);
-        backpropagation(node->children[j], result);
-        hasChildren = true;
-        break;
-      }
-
-      if (!hasChildren) {
+      if (child == node) {
         backpropagation(node, node->value);
+      } else {
+        double result = playout(child);
+        backpropagation(child, result);
       }
     } else {
       double result = playout(node);
@@ -61,57 +56,35 @@ std::shared_ptr<mcts::Node> mcts::MCTS::run() {
   }
 
   int maxVisits = 0;
-  double bestAvgValue = -std::numeric_limits<double>::max();
-
-  // 找出訪問次數達到最大值一定比例的節點
-  const double visitThreshold = 0.85;  // 訪問次數必須達到最大值的85%
-
-  // 首先找到最大訪問次數
   for (const auto& child : root->children) {
-    if (child && child->visits > maxVisits) {
+    if (child == nullptr) continue;
+    if (child->visits > maxVisits) {
       maxVisits = child->visits;
+      bestChild = child;
     }
   }
-
-  // 在訪問次數接近的節點中，選擇平均值最高的
-  for (const auto& child : root->children) {
-    if (child && child->visits > 0 &&
-        static_cast<double>(child->visits) / maxVisits >= visitThreshold) {
-      double avgValue = child->value / child->visits;
-      if (bestChild == nullptr || avgValue > bestAvgValue) {
-        bestAvgValue = avgValue;
-        bestChild = child;
-      }
-    }
-  }
-
-  // 如果沒有找到達到閾值的節點，回退到使用最大訪問次數
-  if (bestChild == nullptr) {
-    for (const auto& child : root->children) {
-      if (child && child->visits == maxVisits) {
-        bestChild = child;
-        break;
-      }
-    }
-  }
-
   return bestChild;
 }
 
 std::shared_ptr<mcts::Node> mcts::MCTS::selection(std::shared_ptr<Node> root) {
   std::shared_ptr<Node> node = root;
   while (true) {
-    if (node->children[0] == nullptr) {
-      return node;
-    }
+    bool hasChildren = false;
 
     std::shared_ptr<Node> bestChild = nullptr;
+
+    double maxUCBValue = std::numeric_limits<double>::lowest();
     for (const auto& child : node->children) {
       if (!child) continue;
-      if (bestChild == nullptr ||
-          child->getUCBValue() > bestChild->getUCBValue()) {
+      if (bestChild == nullptr || child->getUCBValue() > maxUCBValue) {
         bestChild = child;
+        maxUCBValue = child->getUCBValue();
+        hasChildren = true;
       }
+    }
+
+    if (!hasChildren) {
+      return node;
     }
 
     node = bestChild;
@@ -121,9 +94,9 @@ std::shared_ptr<mcts::Node> mcts::MCTS::selection(std::shared_ptr<Node> root) {
 double mcts::Node::getUCBValue() const {
   if (visits == 0) return std::numeric_limits<double>::max();
 
-  const double explorationConstant = 2;
+  const double explorationConstant = 3;
 
-  return static_cast<double>(value) / visits +
+  return value / visits +
          explorationConstant * sqrt(log(parent->visits) / visits);
 }
 
@@ -231,6 +204,7 @@ double mcts::MCTS::playout(std::shared_ptr<Node> node) {
       }
 
       // 根據動作模擬玩家的牌
+      double result = 0;
       switch (node->action) {
         case Action::HIT:
           playerPokersCopy.push_back(cardPoolCopy.back());
@@ -243,8 +217,8 @@ double mcts::MCTS::playout(std::shared_ptr<Node> node) {
           cardPoolCopy.pop_back();
           break;
         case Action::SURRENDER:
-          taskResult -= 1;
-          continue;  // 投降直接計算下一次模擬
+          taskResult += (37.5 / 100);
+          continue;
         case Action::INSURANCE:
           break;
       }
@@ -281,99 +255,101 @@ double mcts::MCTS::playout(std::shared_ptr<Node> node) {
 
       // 對保險的判斷
       if (node->action == Action::INSURANCE) {
+        bool isBlackjack = false;
+        // 檢查莊家是否有黑傑克
         if (dealerVisibleCardsCopy[1].getNumber() == "10" ||
             dealerVisibleCardsCopy[1].getNumber() == "J" ||
             dealerVisibleCardsCopy[1].getNumber() == "Q" ||
             dealerVisibleCardsCopy[1].getNumber() == "K") {
-          taskResult += 1;
-        } else {
-          taskResult -= 0.5;
+          isBlackjack = true;
         }
-      }
 
-      double result = 0;
-      // 檢查五張牌查理 (Five Card Charlie)
-      if (playerScore <= 21 && playerPokersCopy.size() == 5) {
-        result = 2 * (node->action == Action::DOUBLE ? 2 : 1);
-      }
-      // 檢查順子 (6-7-8)
-      else if (playerScore == 21 && playerPokersCopy.size() == 3) {
-        // 檢查是否為 6-7-8 順子
-        bool has6 = false, has7 = false, has8 = false;
-        for (auto& poker : playerPokersCopy) {
-          if (poker.getNumber() == "6")
-            has6 = true;
-          else if (poker.getNumber() == "7")
-            has7 = true;
-          else if (poker.getNumber() == "8")
-            has8 = true;
-        }
-        if (has6 && has7 && has8) {
-          result = 2 * (node->action == Action::DOUBLE ? 2 : 1);
+        // 保險成功時加分，失敗時減分
+        if (isBlackjack) {
+          result += 75 + 12.5;  // 保險成功得 87.5 分
         } else {
-          // 非順子的情況，繼續正常評估
-          if (playerScore > 21) {  // 玩家爆牌
-            result = -1 * (node->action == Action::DOUBLE ? 2 : 1);
-          } else if (dealerScore > 21) {  // 莊家爆牌
-            result = 1 * (node->action == Action::DOUBLE ? 2 : 1);
-          } else if (playerScore == 21 &&
-                     playerPokersCopy.size() == 2) {  // 玩家黑傑克
-            result =
-                1.5 *
-                (node->action == Action::DOUBLE ? 2 : 1);  // 黑傑克支付1.5倍
-          } else if (playerScore > dealerScore) {          // 玩家點數高
-            result = 1 * (node->action == Action::DOUBLE ? 2 : 1);
-          } else if (playerScore < dealerScore) {  // 莊家點數高
-            result = -1 * (node->action == Action::DOUBLE ? 2 : 1);
-          } else {  // 平局
-            // 莊家和玩家都是黑傑克時才算真正的平局
-            if (dealerScore == 21 && dealerVisibleCardsCopy.size() == 2 &&
-                playerScore == 21 && playerPokersCopy.size() == 2) {
-              result = 0;
-            } else if (dealerScore == 21 &&
-                       dealerVisibleCardsCopy.size() == 2) {
-              // 莊家黑傑克，玩家普通21點
-              result = -1 * (node->action == Action::DOUBLE ? 2 : 1);
-            } else if (playerScore == 21 && playerPokersCopy.size() == 2) {
-              // 玩家黑傑克，莊家普通21點
-              result = 1.5 * (node->action == Action::DOUBLE ? 2 : 1);
-            } else {
-              result = 0;  // 真正的平局
-            }
-          }
+          result -= 75 - 12.5;  // 保險失敗得 62.5 分
         }
       } else {
-        // 正常評估
-        if (playerScore > 21) {  // 玩家爆牌
-          result = -1 * (node->action == Action::DOUBLE ? 2 : 1);
-        } else if (dealerScore > 21) {  // 莊家爆牌
-          result = 1 * (node->action == Action::DOUBLE ? 2 : 1);
-        } else if (playerScore == 21 &&
-                   playerPokersCopy.size() == 2) {  // 玩家黑傑克
-          result = 1.5 *
-                   (node->action == Action::DOUBLE ? 2 : 1);  // 黑傑克支付1.5倍
-        } else if (playerScore > dealerScore) {               // 玩家點數高
-          result = 1 * (node->action == Action::DOUBLE ? 2 : 1);
-        } else if (playerScore < dealerScore) {  // 莊家點數高
-          result = -1 * (node->action == Action::DOUBLE ? 2 : 1);
-        } else {  // 平局
-          // 莊家和玩家都是黑傑克時才算真正的平局
-          if (dealerScore == 21 && dealerVisibleCardsCopy.size() == 2 &&
-              playerScore == 21 && playerPokersCopy.size() == 2) {
-            result = 0;
-          } else if (dealerScore == 21 && dealerVisibleCardsCopy.size() == 2) {
-            // 莊家黑傑克，玩家普通21點
-            result = -1 * (node->action == Action::DOUBLE ? 2 : 1);
-          } else if (playerScore == 21 && playerPokersCopy.size() == 2) {
-            // 玩家黑傑克，莊家普通21點
-            result = 1.5 * (node->action == Action::DOUBLE ? 2 : 1);
+        // 檢查五張牌查理 (Five Card Charlie)
+        if (playerScore <= 21 && playerPokersCopy.size() == 5) {
+          result = node->action == Action::DOUBLE
+                       ? 100
+                       : 87.5;  // 雙倍下注100分，特殊牌型87.5分
+        }
+        // 檢查順子 (6-7-8)
+        else if (playerScore == 21 && playerPokersCopy.size() == 3) {
+          // 檢查是否為 6-7-8 順子
+          bool has6 = false, has7 = false, has8 = false;
+          for (auto& poker : playerPokersCopy) {
+            if (poker.getNumber() == "6")
+              has6 = true;
+            else if (poker.getNumber() == "7")
+              has7 = true;
+            else if (poker.getNumber() == "8")
+              has8 = true;
+          }
+          if (has6 && has7 && has8) {
+            result = node->action == Action::DOUBLE
+                         ? 100
+                         : 87.5;  // 雙倍下注100分，特殊牌型87.5分
           } else {
-            result = 0;  // 真正的平局
+            // 非順子的情況，繼續正常評估
+            if (playerScore > 21) {  // 玩家爆牌
+              result = node->action == Action::DOUBLE
+                           ? 25
+                           : 37.5;          // 失敗：雙倍25分，普通37.5分
+            } else if (dealerScore > 21) {  // 莊家爆牌
+              result = node->action == Action::DOUBLE
+                           ? 100
+                           : 75;  // 雙倍下注100分，普通75分
+            } else if (playerScore == 21 &&
+                       playerPokersCopy.size() == 2) {  // 玩家黑傑克
+              result = node->action == Action::DOUBLE
+                           ? 100
+                           : 87.5;  // 雙倍下注100分，特殊牌型87.5分
+            } else if (playerScore > dealerScore) {  // 玩家點數高
+              result = node->action == Action::DOUBLE
+                           ? 100
+                           : 75;                     // 雙倍下注100分，普通75分
+            } else if (playerScore < dealerScore) {  // 莊家點數高
+              result = node->action == Action::DOUBLE
+                           ? 25
+                           : 37.5;  // 失敗：雙倍25分，普通37.5分
+            } else {                // 平局
+              result = 62.5;        // 平局 62.5 分
+            }
+          }
+        } else {
+          // 正常評估
+          if (playerScore > 21) {  // 玩家爆牌
+            result = node->action == Action::DOUBLE
+                         ? 25
+                         : 37.5;          // 失敗：雙倍25分，普通37.5分
+          } else if (dealerScore > 21) {  // 莊家爆牌
+            result = node->action == Action::DOUBLE
+                         ? 100
+                         : 75;  // 雙倍下注100分，普通75分
+          } else if (playerScore == 21 &&
+                     playerPokersCopy.size() == 2) {  // 玩家黑傑克
+            result = node->action == Action::DOUBLE
+                         ? 100
+                         : 87.5;  // 雙倍下注100分，特殊牌型87.5分
+          } else if (playerScore > dealerScore) {  // 玩家點數高
+            result = node->action == Action::DOUBLE
+                         ? 100
+                         : 75;                     // 雙倍下注100分，普通75分
+          } else if (playerScore < dealerScore) {  // 莊家點數高
+            result = node->action == Action::DOUBLE
+                         ? 25
+                         : 37.5;  // 失敗：雙倍25分，普通37.5分
+          } else {                // 平局
+            result = 62.5;        // 平局 62.5 分
           }
         }
       }
 
-      taskResult += result;
+      taskResult += (result / 100);
     }
     return taskResult;
   };

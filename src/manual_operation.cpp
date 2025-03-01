@@ -62,47 +62,32 @@ std::map<std::string, bool> ManualOperation::doubleOrSurrender(
   result["double"] = false;
   result["surrender"] = false;
   result["nothing"] = false;
-  bool isEleven = (point == 11);
-  (isEleven) ? std::cout << "Which action do you want to take?\n"
-                         << "1  double down(Beacause your point is 11. "
-                         << "It can only take one more card)\n"
-                         << "2  surrender(take back half of your bet)\n"
-             : std::cout << "Which action do you want to take?\n"
-                         << "1  surrender(take back half of your bet)\n"
-                         << "0  nothing and continue\n";
+  std::cout << "Which action do you want to take?\n"
+            << "1  double down(Beacause your point is 11. "
+            << "It can only take one more card)\n"
+            << "2  surrender(take back half of your bet)\n"
+            << "0  do nothing\n";
+            
+
   while (true) {
     std::cin >> input;
 
-    if (isEleven) {
-      if (input != "0" && input != "1" && input != "2") {
-        std::cout << "Please enter valid number!\n";
-        continue;
-      } else {
-        if (input == "1") {
-          std::cout << "You have chosen to double down\n";
-          result["double"] = true;
-        } else if (input == "2") {
-          std::cout << "You have chosen to surrender\n";
-          result["surrender"] = true;
-        } else {
-          std::cout << "You have chosen to do nothing\n";
-          result["nothing"] = true;
-        }
-      }
+    if (input != "0" && input != "1" && input != "2") {
+      std::cout << "Please enter valid number!\n";
+      continue;
     } else {
-      if (input != "0" && input != "1") {
-        std::cout << "Please enter valid number!\n";
-        continue;
+      if (input == "1") {
+        std::cout << "You have chosen to double down\n";
+        result["double"] = true;
+      } else if (input == "2") {
+        std::cout << "You have chosen to surrender\n";
+        result["surrender"] = true;
       } else {
-        if (input == "1") {
-          std::cout << "You have chosen to surrender\n";
-          result["surrender"] = true;
-        } else {
-          std::cout << "You have chosen to do nothing\n";
-          result["nothing"] = true;
-        }
+        std::cout << "You have chosen to do nothing\n";
+        result["nothing"] = true;
       }
     }
+
     return result;
     break;
   }

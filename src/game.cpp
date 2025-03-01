@@ -30,7 +30,7 @@ void Game::start(bool isTestMode) {
     int wins = 0;
     int losses = 0;
     int draws = 0;
-    int totalGames = 1000;
+    int totalGames = 10000;
     int totalProfit = 0;
 
     Player defaultPlayer("Default", *new DefaultOperation());
@@ -88,8 +88,9 @@ void Game::start(bool isTestMode) {
       _init();
 
       // for the player 0 is banker
-      _banker = &_players[0];
-      if (!_banker->_isBanker) {
+      if(_banker != &_players[0]) {
+        _banker->_isBanker = false;
+        _banker = &_players[0];
         _banker->_isBanker = true;
       }
 
@@ -694,6 +695,15 @@ void Game::_drawForBanker() {
       return;
     }
   }
+
+  // basic strategy
+  // while (_banker->getPoint() < 17) {
+  //   Dealer::deal(*_banker, _cardPool, false);
+  //   std::cout << _banker->getName() << "(banker)"
+  //             << " : has got these cards now:\n\n";
+  //   std::cout << "Point : " << _banker->getPoint() << "\n";
+  //   Poker::printPokers(_banker->getPokers());
+  // }
 
   // 莊家已達到17點或以上（且不是軟17），停止抽牌
   std::cout << _banker->getName() << "(banker)"
