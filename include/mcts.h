@@ -14,6 +14,16 @@
 
 #define PLAYOUT_TIMES 200
 
+#define SPECIAL_WIN_VALUE 62.5 / 75
+#define NORMAL_WIN_VALUE 50 / 75
+#define NORMAL_LOSE_VALUE 12.5 / 75
+#define DOUBLE_WIN_VALUE 75 / 75
+#define DOUBLE_LOSE_VALUE 0 / 75
+#define DRAW_VALUE 37.5 / 75
+#define SURRENDER_VALUE 18.75 / 75
+#define INSURANCE_SUCCESS_VALUE 37.5 / 75
+#define INSURANCE_FAIL_VALUE 12.5 / 75
+
 namespace mcts {
 
 enum Action {

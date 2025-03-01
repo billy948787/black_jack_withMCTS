@@ -217,7 +217,7 @@ double mcts::MCTS::playout(std::shared_ptr<Node> node) {
           cardPoolCopy.pop_back();
           break;
         case Action::SURRENDER:
-          taskResult += (37.5 / 100);
+          taskResult += SURRENDER_VALUE;
           continue;
         case Action::INSURANCE:
           break;
@@ -253,29 +253,22 @@ double mcts::MCTS::playout(std::shared_ptr<Node> node) {
         dealerScore = Poker::getPokerValue(dealerVisibleCardsCopy);
       }
 
-      // 對保險的判斷
-      if (node->action == Action::INSURANCE) {
-        bool isBlackjack = false;
-        // 檢查莊家是否有黑傑克
-        if (dealerVisibleCardsCopy[1].getNumber() == "10" ||
-            dealerVisibleCardsCopy[1].getNumber() == "J" ||
-            dealerVisibleCardsCopy[1].getNumber() == "Q" ||
-            dealerVisibleCardsCopy[1].getNumber() == "K") {
-          isBlackjack = true;
-        }
-
-        // 保險成功時加分，失敗時減分
-        if (isBlackjack) {
-          result += 75 + 12.5;  // 保險成功得 87.5 分
+      // 莊家有黑傑克
+      if (dealerScore == 21 && dealerVisibleCardsCopy.size() == 2) {
+        // 玩家有無保險
+        if (node->action == Action::INSURANCE) {
+          result = INSURANCE_SUCCESS_VALUE;
         } else {
-          result -= 75 - 12.5;  // 保險失敗得 62.5 分
+          result = node->action == Action::DOUBLE
+                       ? DOUBLE_LOSE_VALUE
+                       : NORMAL_LOSE_VALUE;  // 失敗：雙倍25分，普通37.5分
         }
       } else {
         // 檢查五張牌查理 (Five Card Charlie)
         if (playerScore <= 21 && playerPokersCopy.size() == 5) {
           result = node->action == Action::DOUBLE
-                       ? 100
-                       : 87.5;  // 雙倍下注100分，特殊牌型87.5分
+                       ? DOUBLE_WIN_VALUE
+                       : SPECIAL_WIN_VALUE;  // 雙倍下注100分，特殊牌型87.5分
         }
         // 檢查順子 (6-7-8)
         else if (playerScore == 21 && playerPokersCopy.size() == 3) {
@@ -291,65 +284,72 @@ double mcts::MCTS::playout(std::shared_ptr<Node> node) {
           }
           if (has6 && has7 && has8) {
             result = node->action == Action::DOUBLE
-                         ? 100
-                         : 87.5;  // 雙倍下注100分，特殊牌型87.5分
+                         ? DOUBLE_WIN_VALUE
+                         : SPECIAL_WIN_VALUE;  // 雙倍下注100分，特殊牌型87.5分
           } else {
             // 非順子的情況，繼續正常評估
             if (playerScore > 21) {  // 玩家爆牌
               result = node->action == Action::DOUBLE
-                           ? 25
-                           : 37.5;          // 失敗：雙倍25分，普通37.5分
-            } else if (dealerScore > 21) {  // 莊家爆牌
+                           ? DOUBLE_LOSE_VALUE
+                           : NORMAL_LOSE_VALUE;  // 失敗：雙倍25分，普通37.5分
+            } else if (dealerScore > 21) {       // 莊家爆牌
               result = node->action == Action::DOUBLE
-                           ? 100
-                           : 75;  // 雙倍下注100分，普通75分
+                           ? DOUBLE_WIN_VALUE
+                           : NORMAL_WIN_VALUE;  // 雙倍下注100分，普通75分
             } else if (playerScore == 21 &&
                        playerPokersCopy.size() == 2) {  // 玩家黑傑克
-              result = node->action == Action::DOUBLE
-                           ? 100
-                           : 87.5;  // 雙倍下注100分，特殊牌型87.5分
+              result =
+                  node->action == Action::DOUBLE
+                      ? DOUBLE_WIN_VALUE
+                      : SPECIAL_WIN_VALUE;  // 雙倍下注100分，特殊牌型87.5分
             } else if (playerScore > dealerScore) {  // 玩家點數高
               result = node->action == Action::DOUBLE
-                           ? 100
-                           : 75;                     // 雙倍下注100分，普通75分
+                           ? DOUBLE_WIN_VALUE
+                           : NORMAL_WIN_VALUE;       // 雙倍下注100分，普通75分
             } else if (playerScore < dealerScore) {  // 莊家點數高
               result = node->action == Action::DOUBLE
-                           ? 25
-                           : 37.5;  // 失敗：雙倍25分，普通37.5分
-            } else {                // 平局
-              result = 62.5;        // 平局 62.5 分
+                           ? DOUBLE_LOSE_VALUE
+                           : NORMAL_LOSE_VALUE;  // 失敗：雙倍25分，普通37.5分
+            } else {                             // 平局
+              result = DRAW_VALUE;               // 平局 62.5 分
             }
           }
         } else {
           // 正常評估
           if (playerScore > 21) {  // 玩家爆牌
             result = node->action == Action::DOUBLE
-                         ? 25
-                         : 37.5;          // 失敗：雙倍25分，普通37.5分
-          } else if (dealerScore > 21) {  // 莊家爆牌
+                         ? DOUBLE_LOSE_VALUE
+                         : NORMAL_LOSE_VALUE;  // 失敗：雙倍25分，普通37.5分
+          } else if (dealerScore > 21) {       // 莊家爆牌
             result = node->action == Action::DOUBLE
-                         ? 100
-                         : 75;  // 雙倍下注100分，普通75分
+                         ? DOUBLE_WIN_VALUE
+                         : NORMAL_WIN_VALUE;  // 雙倍下注100分，普通75分
           } else if (playerScore == 21 &&
                      playerPokersCopy.size() == 2) {  // 玩家黑傑克
             result = node->action == Action::DOUBLE
-                         ? 100
-                         : 87.5;  // 雙倍下注100分，特殊牌型87.5分
+                         ? DOUBLE_WIN_VALUE
+                         : SPECIAL_WIN_VALUE;  // 雙倍下注100分，特殊牌型87.5分
           } else if (playerScore > dealerScore) {  // 玩家點數高
             result = node->action == Action::DOUBLE
-                         ? 100
-                         : 75;                     // 雙倍下注100分，普通75分
+                         ? DOUBLE_WIN_VALUE
+                         : NORMAL_WIN_VALUE;       // 雙倍下注100分，普通75分
           } else if (playerScore < dealerScore) {  // 莊家點數高
             result = node->action == Action::DOUBLE
-                         ? 25
-                         : 37.5;  // 失敗：雙倍25分，普通37.5分
-          } else {                // 平局
-            result = 62.5;        // 平局 62.5 分
+                         ? DOUBLE_LOSE_VALUE
+                         : NORMAL_LOSE_VALUE;  // 失敗：雙倍25分，普通37.5分
+          } else {                             // 平局
+            result = DRAW_VALUE;               // 平局 62.5 分
           }
+        }
+
+        if (node->action == Action::INSURANCE) {
+          result -= INSURANCE_FAIL_VALUE;
         }
       }
 
-      taskResult += (result / 100);
+      if (result < 0) result = 0;
+
+      taskResult += result;
     }
     return taskResult;
   };
