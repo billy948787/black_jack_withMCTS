@@ -20,6 +20,11 @@ class Poker {
   static void printPokers(Poker);
   void flipTheCard();
 
+  bool operator==(const Poker& poker) const {
+    return _suit == poker._suit && _number == poker._number;
+  }
+  bool operator!=(const Poker& poker) const { return !(*this == poker); }
+
   static int getPokerValue(Poker poker) {
     if (poker.getNumber() == "A") return 11;
     if (poker.getNumber() == "J" || poker.getNumber() == "Q" ||
@@ -45,12 +50,13 @@ class Poker {
       }
     }
 
-    while (count-- > 0) {
-      if (point + 11 > 21) {
+    while (count > 0) {
+      if (point + count * 11 > 21) {
         point += 1;
       } else {
         point += 11;
       }
+      count--;
     }
 
     return point;

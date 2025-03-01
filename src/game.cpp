@@ -134,7 +134,7 @@ void Game::start(bool isTestMode) {
   std::string name;
   std::cin >> name;
   // create player
-  _players.push_back(Player(name, *new DefaultOperation()));
+  _players.push_back(Player(name, *new ManualOperation()));
 
   for (int i = 1; i < _playerCount; i++) {
     _players.push_back(
@@ -690,7 +690,7 @@ void Game::_drawForBanker() {
 }
 
 // 判斷是否為軟17點 (有A且A算作11時總點數為17)
-bool Game::_isSoft17( std::vector<Poker> &cards) {
+bool Game::_isSoft17(std::vector<Poker> &cards) {
   bool hasAce = false;
   int sum = 0;
 
@@ -772,13 +772,15 @@ void Game::_settle() {
         _banker->_gainedFromLastRound -= player.getBet();
         player.winBet();
       } else {
-        player.winBet("takeBetBack");
+        _banker->addMoney(player.getBet());
+        _banker->_gainedFromLastRound += player.getBet();
+        player.loseBet();
       }
       continue;
     }
 
     if (_banker->getPoint() <= 21) {
-      // check if the player is busted
+      // 玩家爆牌
       if (player.getPoint() > 21) {
         _banker->addMoney(player.getBet());
         _banker->_gainedFromLastRound += player.getBet();
@@ -786,14 +788,31 @@ void Game::_settle() {
         continue;
       }
 
-      if (player.getPoint() > _banker->getPoint()) {
+      // 判斷玩家是否有黑傑克 (Ace + 10值牌)
+      bool playerHasBlackjack =
+          (player.getPokers().size() == 2 && player.getPoint() == 21);
+      bool bankerHasBlackjack =
+          (_banker->getPokers().size() == 2 && _banker->getPoint() == 21);
+
+      // 比較點數
+      if (playerHasBlackjack && !bankerHasBlackjack) {
+        // 玩家有黑傑克，莊家沒有
+        _banker->reduceMoney(player.getBet() * 1.5);
+        _banker->_gainedFromLastRound -= player.getBet() * 1.5;
+        player.winBet("blackjack");
+      } else if (player.getPoint() > _banker->getPoint()) {
+        // 玩家點數大於莊家
         _banker->reduceMoney(player.getBet());
         _banker->_gainedFromLastRound -= player.getBet();
         player.winBet();
-      } else {
+      } else if (player.getPoint() < _banker->getPoint()) {
+        // 玩家點數小於莊家
         _banker->addMoney(player.getBet());
         _banker->_gainedFromLastRound += player.getBet();
         player.loseBet();
+      } else {
+        // 點數相同，處理推局
+        player.winBet("takeBetBack");
       }
     }
   }

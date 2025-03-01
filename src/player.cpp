@@ -126,12 +126,13 @@ int Player::getPoint() {
     }
   }
 
-  while (count-- > 0) {
-    if (point + 11 > 21) {
+  while (count > 0) {
+    if(point + count * 11 > 21) {
       point += 1;
     } else {
       point += 11;
     }
+    count--;
   }
 
   return point;

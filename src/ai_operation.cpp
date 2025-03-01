@@ -7,12 +7,15 @@
 #include "mcts.h"
 const int sleepTime = 2000;
 
-const int simulations = 100000;
+const int simulations = 50000;
+
+AIOperation::AIOperation() {}
 
 bool AIOperation::hit(std::vector<Poker> playerCards,
                       std::vector<Poker> dealerVisibleCards,
                       std::vector<Poker> cardPool) {
-  mcts::MCTS mctsEngine(simulations, playerCards, cardPool, dealerVisibleCards);
+  auto mctsEngine =
+      mcts::MCTS(simulations, playerCards, cardPool, dealerVisibleCards);
 
   auto bestNode = mctsEngine.run();
 
@@ -28,7 +31,9 @@ std::map<std::string, bool> AIOperation::doubleOrSurrender(
     std::vector<Poker> cardPool) {
   std::map<std::string, bool> result;
 
-  mcts::MCTS mctsEngine(simulations, playerCards, cardPool, dealerVisibleCards);
+  auto mctsEngine =
+      mcts::MCTS(simulations, playerCards, cardPool, dealerVisibleCards);
+
   auto bestNode = mctsEngine.run();
 
   if (bestNode->action == mcts::Action::DOUBLE) {
@@ -45,7 +50,8 @@ std::map<std::string, bool> AIOperation::doubleOrSurrender(
 bool AIOperation::insurance(std::vector<Poker> playerCards,
                             std::vector<Poker> dealerVisibleCards,
                             std::vector<Poker> cardPool) {
-  mcts::MCTS mctsEngine(simulations, playerCards, cardPool, dealerVisibleCards);
+  auto mctsEngine =
+      mcts::MCTS(simulations, playerCards, cardPool, dealerVisibleCards);
 
   auto bestNode = mctsEngine.run();
 
