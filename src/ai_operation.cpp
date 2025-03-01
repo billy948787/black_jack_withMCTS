@@ -7,7 +7,7 @@
 #include "mcts.h"
 const int sleepTime = 2000;
 
-const int simulations = 50000;
+const int simulations = 10000;
 
 AIOperation::AIOperation() {}
 

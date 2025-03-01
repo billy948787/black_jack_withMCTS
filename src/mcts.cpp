@@ -56,11 +56,36 @@ std::shared_ptr<mcts::Node> mcts::MCTS::run() {
   }
 
   int maxVisits = 0;
+  double bestAvgValue = -std::numeric_limits<double>::max();
+
+  // 找出訪問次數達到最大值一定比例的節點
+  const double visitThreshold = 0.85;  // 訪問次數必須達到最大值的85%
+
+  // 首先找到最大訪問次數
   for (const auto& child : root->children) {
-    if (child) {
-      if (child->visits > maxVisits) {
-        maxVisits = child->visits;
+    if (child && child->visits > maxVisits) {
+      maxVisits = child->visits;
+    }
+  }
+
+  // 在訪問次數接近的節點中，選擇平均值最高的
+  for (const auto& child : root->children) {
+    if (child && child->visits > 0 &&
+        static_cast<double>(child->visits) / maxVisits >= visitThreshold) {
+      double avgValue = child->value / child->visits;
+      if (bestChild == nullptr || avgValue > bestAvgValue) {
+        bestAvgValue = avgValue;
         bestChild = child;
+      }
+    }
+  }
+
+  // 如果沒有找到達到閾值的節點，回退到使用最大訪問次數
+  if (bestChild == nullptr) {
+    for (const auto& child : root->children) {
+      if (child && child->visits == maxVisits) {
+        bestChild = child;
+        break;
       }
     }
   }
@@ -93,7 +118,7 @@ std::shared_ptr<mcts::Node> mcts::MCTS::selection(std::shared_ptr<Node> root) {
 double mcts::Node::getUCBValue() const {
   if (visits == 0) return std::numeric_limits<double>::max();
 
-  const double explorationConstant = 1.414;
+  const double explorationConstant = 4;
 
   return static_cast<double>(value) / visits +
          explorationConstant * sqrt(log(parent->visits) / visits);

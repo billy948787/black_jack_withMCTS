@@ -34,10 +34,12 @@ void Game::start(bool isTestMode) {
     int totalProfit = 0;
 
     Player defaultPlayer("Default", *new DefaultOperation());
+    Player defaultPlayer2("Default2", *new DefaultOperation());
     Player aiPlayer("AI", *new AIOperation());
 
     _players.push_back(defaultPlayer);
     _players.push_back(aiPlayer);
+    _players.push_back(defaultPlayer2);
 
     std::cout << "testing mcts..." << std::endl;
     std::cout << "[                                                  ] 0/"
@@ -54,6 +56,10 @@ void Game::start(bool isTestMode) {
     std::cout.rdbuf(nullStream.rdbuf());
 
     for (int i = 0; i < totalGames; i++) {
+      if(_players[0].getMoney() < 100000){
+        _players[0].addMoney(99999999);
+      }
+
       if (i % 10 == 0 || i == totalGames - 1) {
         // 計算進度百分比
         int percentage = (i * 100) / totalGames;
@@ -92,16 +98,16 @@ void Game::start(bool isTestMode) {
       _drawForBanker();
       _settle();
       Dealer::reduceCard(_players);
-      _kickOut();
 
       aiPlayer = _players[1];
-      defaultPlayer = _players[0];
+      defaultPlayer2 = _players[2];
 
       totalProfit += aiPlayer.getProfit();
 
-      if (aiPlayer.getProfit() > defaultPlayer.getProfit()) {
+
+      if (aiPlayer.getProfit() > defaultPlayer2.getProfit()) {
         wins++;
-      } else if (aiPlayer.getProfit() < defaultPlayer.getProfit()) {
+      } else if (aiPlayer.getProfit() < defaultPlayer2.getProfit()) {
         losses++;
       } else {
         draws++;
@@ -470,7 +476,13 @@ void Game::_decideTheBanker() {
   int highest = -1e9;
   int highestPlayers = 1;
 
-  // clear the banker first
+  if (!_players[0]._isBanker) {
+    _banker = &_players[0];
+    _banker->switchBanker();
+    return;
+  }
+
+  //clear the banker first 
   if (_banker != nullptr) {
     _banker->switchBanker();
     _banker = nullptr;
