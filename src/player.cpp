@@ -65,7 +65,7 @@ void Player::clearPoker() { _pokers.clear(); }
 
 int Player::getProfit() { return _gainedFromLastRound; }
 
-int Player::getTotalProfit() { return _money - 10000; }
+int Player::getTotalProfit() { return _money - 100000; }
 
 void Player::callBet(int bet) {
   this->_bet += bet;

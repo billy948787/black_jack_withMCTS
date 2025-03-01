@@ -56,7 +56,7 @@ void Game::start(bool isTestMode) {
     std::cout.rdbuf(nullStream.rdbuf());
 
     for (int i = 0; i < totalGames; i++) {
-      if(_players[0].getMoney() < 100000){
+      if (_players[0].getMoney() < 100000) {
         _players[0].addMoney(99999999);
       }
 
@@ -87,6 +87,12 @@ void Game::start(bool isTestMode) {
 
       _init();
 
+      // for the player 0 is banker
+      _banker = &_players[0];
+      if (!_banker->_isBanker) {
+        _banker->_isBanker = true;
+      }
+
       Dealer::shuffle(_cardPool);
       Dealer::deal(_players, _cardPool);
       Dealer::deal(_players, _cardPool);
@@ -103,7 +109,6 @@ void Game::start(bool isTestMode) {
       defaultPlayer2 = _players[2];
 
       totalProfit += aiPlayer.getProfit();
-
 
       if (aiPlayer.getProfit() > defaultPlayer2.getProfit()) {
         wins++;
@@ -476,13 +481,7 @@ void Game::_decideTheBanker() {
   int highest = -1e9;
   int highestPlayers = 1;
 
-  if (!_players[0]._isBanker) {
-    _banker = &_players[0];
-    _banker->switchBanker();
-    return;
-  }
-
-  //clear the banker first 
+  // clear the banker first
   if (_banker != nullptr) {
     _banker->switchBanker();
     _banker = nullptr;

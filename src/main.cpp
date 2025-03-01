@@ -6,7 +6,7 @@
 int main() {
   Game game = Game::getInstance();
 
-  std::cout<< DEFAULT << "Welcome to BlackJack\n";
+  std::cout << DEFAULT << "Welcome to BlackJack\n";
 
   bool isTestMode = true;
 

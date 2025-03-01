@@ -17,18 +17,23 @@ mcts::MCTS::MCTS(int simualtions, std::vector<Poker> pokers,
   root->visits = 0;
   root->action = Action::HIT;
   root->parent = nullptr;
+}
+
+std::shared_ptr<mcts::Node> mcts::MCTS::run() {
+  std::shared_ptr<Node> bestChild;
 
   for (int i = 0; i < MAX_CHILDREN; ++i) {
+    if (dealerVisibleCards[0].getNumber() != "A" &&
+        static_cast<Action>(i) == Action::INSURANCE) {
+      continue;
+    }
+
     std::shared_ptr<Node> child = std::make_shared<Node>();
     child->parent = root;
     child->action = static_cast<Action>(i);
     child->pokers = root->pokers;
     root->children[i] = child;
   }
-}
-
-std::shared_ptr<mcts::Node> mcts::MCTS::run() {
-  std::shared_ptr<Node> bestChild;
 
   for (int i = 0; i < _simulations; ++i) {
     auto node = selection(root);
@@ -47,7 +52,7 @@ std::shared_ptr<mcts::Node> mcts::MCTS::run() {
       }
 
       if (!hasChildren) {
-        backpropagation(node, 0);
+        backpropagation(node, node->value);
       }
     } else {
       double result = playout(node);
@@ -90,8 +95,6 @@ std::shared_ptr<mcts::Node> mcts::MCTS::run() {
     }
   }
 
-  std::cout << "bestChild: " << bestChild->action << std::endl;
-
   return bestChild;
 }
 
@@ -118,7 +121,7 @@ std::shared_ptr<mcts::Node> mcts::MCTS::selection(std::shared_ptr<Node> root) {
 double mcts::Node::getUCBValue() const {
   if (visits == 0) return std::numeric_limits<double>::max();
 
-  const double explorationConstant = 4;
+  const double explorationConstant = 2;
 
   return static_cast<double>(value) / visits +
          explorationConstant * sqrt(log(parent->visits) / visits);
@@ -274,6 +277,18 @@ double mcts::MCTS::playout(std::shared_ptr<Node> node) {
         dealerVisibleCardsCopy.push_back(cardPoolCopy.back());
         cardPoolCopy.pop_back();
         dealerScore = Poker::getPokerValue(dealerVisibleCardsCopy);
+      }
+
+      // 對保險的判斷
+      if (node->action == Action::INSURANCE) {
+        if (dealerVisibleCardsCopy[1].getNumber() == "10" ||
+            dealerVisibleCardsCopy[1].getNumber() == "J" ||
+            dealerVisibleCardsCopy[1].getNumber() == "Q" ||
+            dealerVisibleCardsCopy[1].getNumber() == "K") {
+          taskResult += 1;
+        } else {
+          taskResult -= 0.5;
+        }
       }
 
       double result = 0;
