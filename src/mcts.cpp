@@ -261,14 +261,14 @@ double mcts::MCTS::playout(std::shared_ptr<Node> node) {
         } else {
           result = node->action == Action::DOUBLE
                        ? DOUBLE_LOSE_VALUE
-                       : NORMAL_LOSE_VALUE;  // 失敗：雙倍25分，普通37.5分
+                       : NORMAL_LOSE_VALUE;  
         }
       } else {
         // 檢查五張牌查理 (Five Card Charlie)
         if (playerScore <= 21 && playerPokersCopy.size() == 5) {
           result = node->action == Action::DOUBLE
                        ? DOUBLE_WIN_VALUE
-                       : SPECIAL_WIN_VALUE;  // 雙倍下注100分，特殊牌型87.5分
+                       : SPECIAL_WIN_VALUE; 
         }
         // 檢查順子 (6-7-8)
         else if (playerScore == 21 && playerPokersCopy.size() == 3) {
@@ -285,33 +285,32 @@ double mcts::MCTS::playout(std::shared_ptr<Node> node) {
           if (has6 && has7 && has8) {
             result = node->action == Action::DOUBLE
                          ? DOUBLE_WIN_VALUE
-                         : SPECIAL_WIN_VALUE;  // 雙倍下注100分，特殊牌型87.5分
+                         : SPECIAL_WIN_VALUE; 
           } else {
             // 非順子的情況，繼續正常評估
             if (playerScore > 21) {  // 玩家爆牌
               result = node->action == Action::DOUBLE
                            ? DOUBLE_LOSE_VALUE
-                           : NORMAL_LOSE_VALUE;  // 失敗：雙倍25分，普通37.5分
-            } else if (dealerScore > 21) {       // 莊家爆牌
+                           : NORMAL_LOSE_VALUE; 
               result = node->action == Action::DOUBLE
                            ? DOUBLE_WIN_VALUE
-                           : NORMAL_WIN_VALUE;  // 雙倍下注100分，普通75分
+                           : NORMAL_WIN_VALUE; 
             } else if (playerScore == 21 &&
                        playerPokersCopy.size() == 2) {  // 玩家黑傑克
               result =
                   node->action == Action::DOUBLE
                       ? DOUBLE_WIN_VALUE
-                      : SPECIAL_WIN_VALUE;  // 雙倍下注100分，特殊牌型87.5分
+                      : SPECIAL_WIN_VALUE;  
             } else if (playerScore > dealerScore) {  // 玩家點數高
               result = node->action == Action::DOUBLE
                            ? DOUBLE_WIN_VALUE
-                           : NORMAL_WIN_VALUE;       // 雙倍下注100分，普通75分
+                           : NORMAL_WIN_VALUE;       
             } else if (playerScore < dealerScore) {  // 莊家點數高
               result = node->action == Action::DOUBLE
                            ? DOUBLE_LOSE_VALUE
-                           : NORMAL_LOSE_VALUE;  // 失敗：雙倍25分，普通37.5分
-            } else {                             // 平局
-              result = DRAW_VALUE;               // 平局 62.5 分
+                           : NORMAL_LOSE_VALUE;  
+            } else {                             
+              result = DRAW_VALUE;              
             }
           }
         } else {
@@ -319,26 +318,26 @@ double mcts::MCTS::playout(std::shared_ptr<Node> node) {
           if (playerScore > 21) {  // 玩家爆牌
             result = node->action == Action::DOUBLE
                          ? DOUBLE_LOSE_VALUE
-                         : NORMAL_LOSE_VALUE;  // 失敗：雙倍25分，普通37.5分
+                         : NORMAL_LOSE_VALUE;  
           } else if (dealerScore > 21) {       // 莊家爆牌
             result = node->action == Action::DOUBLE
                          ? DOUBLE_WIN_VALUE
-                         : NORMAL_WIN_VALUE;  // 雙倍下注100分，普通75分
+                         : NORMAL_WIN_VALUE; 
           } else if (playerScore == 21 &&
                      playerPokersCopy.size() == 2) {  // 玩家黑傑克
             result = node->action == Action::DOUBLE
                          ? DOUBLE_WIN_VALUE
-                         : SPECIAL_WIN_VALUE;  // 雙倍下注100分，特殊牌型87.5分
+                         : SPECIAL_WIN_VALUE; 
           } else if (playerScore > dealerScore) {  // 玩家點數高
             result = node->action == Action::DOUBLE
                          ? DOUBLE_WIN_VALUE
-                         : NORMAL_WIN_VALUE;       // 雙倍下注100分，普通75分
+                         : NORMAL_WIN_VALUE;     
           } else if (playerScore < dealerScore) {  // 莊家點數高
             result = node->action == Action::DOUBLE
                          ? DOUBLE_LOSE_VALUE
-                         : NORMAL_LOSE_VALUE;  // 失敗：雙倍25分，普通37.5分
+                         : NORMAL_LOSE_VALUE; 
           } else {                             // 平局
-            result = DRAW_VALUE;               // 平局 62.5 分
+            result = DRAW_VALUE;            
           }
         }
 
