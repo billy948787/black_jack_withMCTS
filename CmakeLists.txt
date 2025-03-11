@@ -15,6 +15,14 @@ file(GLOB TEST_SOURCES "test/*.cpp")
 
 add_executable(test_main ${TEST_SOURCES} ${SOURCES})
 
+add_custom_target(
+    profile
+    COMMAND xcrun xctrace record --template "Time Profiler" --output "${CMAKE_CURRENT_BINARY_DIR}/blackjack.trace" --launch -- ${CMAKE_CURRENT_BINARY_DIR}/blackjack
+    DEPENDS blackjack
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+    COMMENT "Profiling with Instruments"
+)
+
 if(TEST_SOURCES)
     include(FetchContent)
     FetchContent_Declare(

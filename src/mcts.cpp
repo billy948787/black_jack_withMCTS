@@ -4,25 +4,29 @@ mcts::MCTS::MCTS(int simualtions, std::vector<Poker> pokers,
                  std::vector<Poker> knownCardPool,
                  std::vector<Poker> dealerVisibleCards)
     : _simulations(simualtions),
-      knownCardPool(knownCardPool),
-      dealerVisibleCards(dealerVisibleCards) {
+      dealerVisibleCards(dealerVisibleCards),
+      _rng(std::random_device{}()) {
   unsigned int numThreads = std::thread::hardware_concurrency();
   numThreads = numThreads > 0 ? numThreads : 4;
   _threadPool = std::make_unique<ThreadPool>(numThreads);
 
   root = std::make_shared<Node>();
 
+  root->cardPool = knownCardPool;
   root->pokers = pokers;
   root->value = 0;
   root->visits = 0;
   root->action = Action::HIT;
   root->parent = nullptr;
+
+  _playoutTimes = knownCardPool.size();
 }
 
 std::shared_ptr<mcts::Node> mcts::MCTS::run() {
   std::shared_ptr<Node> bestChild;
 
-  for (int i = 0; i < MAX_CHILDREN; ++i) {
+  // 初始化子節點
+  for (int i = 0; i < ACTION_COUNT; ++i) {
     if (dealerVisibleCards[0].getNumber() != "A" &&
         static_cast<Action>(i) == Action::INSURANCE) {
       continue;
@@ -32,6 +36,7 @@ std::shared_ptr<mcts::Node> mcts::MCTS::run() {
     child->parent = root;
     child->action = static_cast<Action>(i);
     child->pokers = root->pokers;
+    child->cardPool = root->cardPool;
     root->children[i] = child;
   }
 
@@ -94,7 +99,7 @@ std::shared_ptr<mcts::Node> mcts::MCTS::selection(std::shared_ptr<Node> root) {
 double mcts::Node::getUCBValue() const {
   if (visits == 0) return std::numeric_limits<double>::max();
 
-  const double explorationConstant = 3;
+  const double explorationConstant = 1.414;
 
   return value / visits +
          explorationConstant * sqrt(log(parent->visits) / visits);
@@ -112,7 +117,54 @@ void mcts::MCTS::expansion(std::shared_ptr<Node> node) {
   // 檢查是否在遊戲初始階段（只有前兩張牌）
   bool isInitialStage = node->pokers.size() == 2;
 
-  for (int i = 0; i < MAX_CHILDREN; ++i) {
+  // 對HIT動作的特殊處理
+  if (node->action == Action::HIT) {
+    int standNodeIndex = 0;  // 為STAND動作預留的子節點索引
+
+    // 建立STAND子節點
+    auto standChild = std::make_shared<Node>();
+    standChild->parent = node;
+    standChild->action = Action::STAND;
+    standChild->cardPool = node->cardPool;
+    standChild->pokers = node->pokers;
+    standChild->value = 0;
+    standChild->visits = 0;
+    node->children[standNodeIndex] = standChild;
+
+    // 為HIT動作創建多個子節點，每個代表不同的抽牌結果
+    int hitNodesCount = HIT_SIMULATION_COUNT;  // 預留一個給STAND
+
+    // 確保卡池不為空
+    if (!node->cardPool.empty()) {
+      for (int i = 0; i < hitNodesCount; ++i) {
+        if (i + 1 >= MAX_CHILDREN) break;  // 防止越界
+
+        auto child = std::make_shared<Node>();
+        child->parent = node;
+        child->action = Action::HIT;
+        child->cardPool = node->cardPool;
+        child->pokers = node->pokers;
+        child->value = 0;
+        child->visits = 0;
+
+        // 隨機抽一張牌
+        if (!child->cardPool.empty()) {
+          std::uniform_int_distribution<int> dist(0,
+                                                  child->cardPool.size() - 1);
+          int cardIndex = dist(_rng);
+          child->pokers.push_back(child->cardPool[cardIndex]);
+          child->cardPool.erase(child->cardPool.begin() + cardIndex);
+        }
+
+        node->children[i + 1] = child;  // i+1因為索引0已用於STAND
+      }
+    }
+
+    return;  // 已處理完HIT情況，直接返回
+  }
+
+  // 其他動作的原始處理邏輯
+  for (int i = 0; i < ACTION_COUNT; ++i) {
     Action currentAction = static_cast<Action>(i);
 
     // 根據遊戲階段和當前狀態檢查動作合法性
@@ -142,17 +194,10 @@ void mcts::MCTS::expansion(std::shared_ptr<Node> node) {
     auto child = std::make_shared<Node>();
     child->parent = node;
     child->action = currentAction;
+    child->cardPool = node->cardPool;
     child->pokers = node->pokers;
-
-    // 根據動作更新牌狀態
-    if (currentAction == Action::HIT && !knownCardPool.empty()) {
-      // 模擬抽牌動作
-      std::vector<Poker> tempPool = knownCardPool;
-      std::shuffle(tempPool.begin(), tempPool.end(),
-                   std::default_random_engine(std::random_device()()));
-      child->pokers.push_back(tempPool.back());
-    }
-
+    child->value = 0;
+    child->visits = 0;
     node->children[i] = child;
   }
 }
@@ -172,13 +217,13 @@ double mcts::MCTS::playout(std::shared_ptr<Node> node) {
   unsigned int numThreads = std::thread::hardware_concurrency();
   numThreads = numThreads > 0 ? numThreads : 4;  // 如果無法檢測，預設為4
   numThreads = std::min(
-      numThreads, (unsigned int)PLAYOUT_TIMES);  // 不要創建比模擬次數更多的線程
+      numThreads, (unsigned int)_playoutTimes);  // 不要創建比模擬次數更多的線程
 
   std::vector<std::thread> threads;
 
   // 平均分配工作給每個線程
-  int playoutsPerTask = PLAYOUT_TIMES / numThreads;
-  int remainingPlayouts = PLAYOUT_TIMES % numThreads;
+  int playoutsPerTask = _playoutTimes / numThreads;
+  int remainingPlayouts = _playoutTimes % numThreads;
 
   // 創建任務和存儲 future 來獲取結果
   std::vector<std::future<double>> results;
@@ -188,12 +233,11 @@ double mcts::MCTS::playout(std::shared_ptr<Node> node) {
 
     for (int i = 0; i < playoutCount; i++) {
       // 為每次模擬建立所需資料的副本
-      auto cardPoolCopy = knownCardPool;
+      auto cardPoolCopy = node->cardPool;
       auto playerPokersCopy = node->pokers;  // 複製玩家的牌，避免修改原始數據
 
       // 洗牌
-      std::shuffle(cardPoolCopy.begin(), cardPoolCopy.end(),
-                   std::default_random_engine(std::random_device()()));
+      std::shuffle(cardPoolCopy.begin(), cardPoolCopy.end(), _rng);
 
       auto dealerVisibleCardsCopy = dealerVisibleCards;
 
@@ -259,16 +303,14 @@ double mcts::MCTS::playout(std::shared_ptr<Node> node) {
         if (node->action == Action::INSURANCE) {
           result = INSURANCE_SUCCESS_VALUE;
         } else {
-          result = node->action == Action::DOUBLE
-                       ? DOUBLE_LOSE_VALUE
-                       : NORMAL_LOSE_VALUE;  
+          result = node->action == Action::DOUBLE ? DOUBLE_LOSE_VALUE
+                                                  : NORMAL_LOSE_VALUE;
         }
       } else {
         // 檢查五張牌查理 (Five Card Charlie)
         if (playerScore <= 21 && playerPokersCopy.size() == 5) {
-          result = node->action == Action::DOUBLE
-                       ? DOUBLE_WIN_VALUE
-                       : SPECIAL_WIN_VALUE; 
+          result = node->action == Action::DOUBLE ? DOUBLE_WIN_VALUE
+                                                  : SPECIAL_WIN_VALUE;
         }
         // 檢查順子 (6-7-8)
         else if (playerScore == 21 && playerPokersCopy.size() == 3) {
@@ -283,61 +325,47 @@ double mcts::MCTS::playout(std::shared_ptr<Node> node) {
               has8 = true;
           }
           if (has6 && has7 && has8) {
-            result = node->action == Action::DOUBLE
-                         ? DOUBLE_WIN_VALUE
-                         : SPECIAL_WIN_VALUE; 
+            result = node->action == Action::DOUBLE ? DOUBLE_WIN_VALUE
+                                                    : SPECIAL_WIN_VALUE;
           } else {
             // 非順子的情況，繼續正常評估
             if (playerScore > 21) {  // 玩家爆牌
-              result = node->action == Action::DOUBLE
-                           ? DOUBLE_LOSE_VALUE
-                           : NORMAL_LOSE_VALUE; 
-              result = node->action == Action::DOUBLE
-                           ? DOUBLE_WIN_VALUE
-                           : NORMAL_WIN_VALUE; 
+              result = node->action == Action::DOUBLE ? DOUBLE_LOSE_VALUE
+                                                      : NORMAL_LOSE_VALUE;
             } else if (playerScore == 21 &&
                        playerPokersCopy.size() == 2) {  // 玩家黑傑克
-              result =
-                  node->action == Action::DOUBLE
-                      ? DOUBLE_WIN_VALUE
-                      : SPECIAL_WIN_VALUE;  
+              result = node->action == Action::DOUBLE ? DOUBLE_WIN_VALUE
+                                                      : SPECIAL_WIN_VALUE;
             } else if (playerScore > dealerScore) {  // 玩家點數高
-              result = node->action == Action::DOUBLE
-                           ? DOUBLE_WIN_VALUE
-                           : NORMAL_WIN_VALUE;       
+              result = node->action == Action::DOUBLE ? DOUBLE_WIN_VALUE
+                                                      : NORMAL_WIN_VALUE;
             } else if (playerScore < dealerScore) {  // 莊家點數高
-              result = node->action == Action::DOUBLE
-                           ? DOUBLE_LOSE_VALUE
-                           : NORMAL_LOSE_VALUE;  
-            } else {                             
-              result = DRAW_VALUE;              
+              result = node->action == Action::DOUBLE ? DOUBLE_LOSE_VALUE
+                                                      : NORMAL_LOSE_VALUE;
+            } else {
+              result = DRAW_VALUE;
             }
           }
         } else {
           // 正常評估
           if (playerScore > 21) {  // 玩家爆牌
-            result = node->action == Action::DOUBLE
-                         ? DOUBLE_LOSE_VALUE
-                         : NORMAL_LOSE_VALUE;  
-          } else if (dealerScore > 21) {       // 莊家爆牌
-            result = node->action == Action::DOUBLE
-                         ? DOUBLE_WIN_VALUE
-                         : NORMAL_WIN_VALUE; 
+            result = node->action == Action::DOUBLE ? DOUBLE_LOSE_VALUE
+                                                    : NORMAL_LOSE_VALUE;
+          } else if (dealerScore > 21) {  // 莊家爆牌
+            result = node->action == Action::DOUBLE ? DOUBLE_WIN_VALUE
+                                                    : NORMAL_WIN_VALUE;
           } else if (playerScore == 21 &&
                      playerPokersCopy.size() == 2) {  // 玩家黑傑克
-            result = node->action == Action::DOUBLE
-                         ? DOUBLE_WIN_VALUE
-                         : SPECIAL_WIN_VALUE; 
+            result = node->action == Action::DOUBLE ? DOUBLE_WIN_VALUE
+                                                    : SPECIAL_WIN_VALUE;
           } else if (playerScore > dealerScore) {  // 玩家點數高
-            result = node->action == Action::DOUBLE
-                         ? DOUBLE_WIN_VALUE
-                         : NORMAL_WIN_VALUE;     
+            result = node->action == Action::DOUBLE ? DOUBLE_WIN_VALUE
+                                                    : NORMAL_WIN_VALUE;
           } else if (playerScore < dealerScore) {  // 莊家點數高
-            result = node->action == Action::DOUBLE
-                         ? DOUBLE_LOSE_VALUE
-                         : NORMAL_LOSE_VALUE; 
-          } else {                             // 平局
-            result = DRAW_VALUE;            
+            result = node->action == Action::DOUBLE ? DOUBLE_LOSE_VALUE
+                                                    : NORMAL_LOSE_VALUE;
+          } else {  // 平局
+            result = DRAW_VALUE;
           }
         }
 
@@ -365,5 +393,5 @@ double mcts::MCTS::playout(std::shared_ptr<Node> node) {
     totalResult += future.get();
   }
 
-  return totalResult / PLAYOUT_TIMES;
+  return totalResult / _playoutTimes;
 }

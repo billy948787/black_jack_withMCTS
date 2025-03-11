@@ -17,7 +17,6 @@ class AIOperation : public Operation {
   AIOperation();
 
  private:
-  const int simulations = 10000;
 };
 
 #endif

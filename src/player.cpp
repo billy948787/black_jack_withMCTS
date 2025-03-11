@@ -90,6 +90,10 @@ void Player::winBet(std::string type) {
   } else if (type == "takeBetBack") {
     addMoney(_bet);
     _gainedFromLastRound = 0;
+  } else if (type == "blackjack") {
+    // 黑傑克賠率3:2，玩家獲得賭注1.5倍的獎金+返還原始賭注
+    addMoney(_bet * 2.5);  // 1.5倍獎金 + 1倍原始賭注
+    _gainedFromLastRound += _bet * 1.5;
   }
 
   clearBet();
@@ -127,7 +131,7 @@ int Player::getPoint() {
   }
 
   while (count > 0) {
-    if(point + count * 11 > 21) {
+    if (point + count * 11 > 21) {
       point += 1;
     } else {
       point += 11;

@@ -10,19 +10,21 @@
 #include "poker.h"
 #include "thread_pool.h"
 
-#define MAX_CHILDREN 5
+// Action 枚舉的數量
+#define ACTION_COUNT 5
+// 總子節點數量 = ACTION_COUNT(基本動作) + HIT_SIMULATION_COUNT(HIT模擬分支)
+#define HIT_SIMULATION_COUNT 20
+#define MAX_CHILDREN (ACTION_COUNT + HIT_SIMULATION_COUNT)
 
-#define PLAYOUT_TIMES 200
-
-#define SPECIAL_WIN_VALUE 62.5 / 75
-#define NORMAL_WIN_VALUE 50 / 75
-#define NORMAL_LOSE_VALUE 12.5 / 75
-#define DOUBLE_WIN_VALUE 75 / 75
-#define DOUBLE_LOSE_VALUE 0 / 75
-#define DRAW_VALUE 37.5 / 75
-#define SURRENDER_VALUE 18.75 / 75
-#define INSURANCE_SUCCESS_VALUE 37.5 / 75
-#define INSURANCE_FAIL_VALUE 12.5 / 75
+const double SPECIAL_WIN_VALUE = 62.5 / 75;
+const double NORMAL_WIN_VALUE = 50.0 / 75;
+const double NORMAL_LOSE_VALUE = 12.5 / 75;
+const double DOUBLE_WIN_VALUE = 75.0 / 75;
+const double DOUBLE_LOSE_VALUE = 0.0 / 75;
+const double DRAW_VALUE = 37.5 / 75;
+const double SURRENDER_VALUE = 18.75 / 75;
+const double INSURANCE_SUCCESS_VALUE = 37.5 / 75;
+const double INSURANCE_FAIL_VALUE = 12.5 / 75;
 
 namespace mcts {
 
@@ -45,6 +47,7 @@ class Node {
   int visits;
 
   std::vector<Poker> pokers;
+  std::vector<Poker> cardPool;
 
   Action action;
 
@@ -66,8 +69,6 @@ class MCTS {
 
   void backpropagation(std::shared_ptr<Node> node, double result);
 
-  std::vector<Poker> knownCardPool;
-
   std::vector<Poker> dealerVisibleCards;
 
   std::shared_ptr<Node> root;
@@ -76,5 +77,9 @@ class MCTS {
   int _simulations;
 
   std::unique_ptr<ThreadPool> _threadPool;
+
+  int _playoutTimes;
+
+  std::mt19937 _rng;
 };
 }  // namespace mcts
