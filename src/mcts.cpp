@@ -19,14 +19,14 @@ mcts::MCTS::MCTS(int simualtions, std::vector<Poker> pokers,
   root->action = Action::HIT;
   root->parent = nullptr;
 
-  _playoutTimes = knownCardPool.size();
+  _playoutTimes = 2000;
 }
 
 std::shared_ptr<mcts::Node> mcts::MCTS::run() {
   std::shared_ptr<Node> bestChild;
 
   // 初始化子節點
-  for (int i = 0; i < ACTION_COUNT; ++i) {
+  for (int i = 0; i < MAX_CHILDREN; ++i) {
     if (dealerVisibleCards[0].getNumber() != "A" &&
         static_cast<Action>(i) == Action::INSURANCE) {
       continue;
@@ -36,6 +36,7 @@ std::shared_ptr<mcts::Node> mcts::MCTS::run() {
     child->parent = root;
     child->action = static_cast<Action>(i);
     child->pokers = root->pokers;
+    child->drawCount = 1;
     child->cardPool = root->cardPool;
     root->children[i] = child;
   }
@@ -101,8 +102,8 @@ double mcts::Node::getUCBValue() const {
 
   const double explorationConstant = 1.414;
 
-  return value / visits +
-         explorationConstant * sqrt(log(parent->visits) / visits);
+  return (value / visits) +
+         (explorationConstant * sqrt(log(parent->visits) / visits));
 }
 
 void mcts::MCTS::expansion(std::shared_ptr<Node> node) {
@@ -117,54 +118,8 @@ void mcts::MCTS::expansion(std::shared_ptr<Node> node) {
   // 檢查是否在遊戲初始階段（只有前兩張牌）
   bool isInitialStage = node->pokers.size() == 2;
 
-  // 對HIT動作的特殊處理
-  if (node->action == Action::HIT) {
-    int standNodeIndex = 0;  // 為STAND動作預留的子節點索引
-
-    // 建立STAND子節點
-    auto standChild = std::make_shared<Node>();
-    standChild->parent = node;
-    standChild->action = Action::STAND;
-    standChild->cardPool = node->cardPool;
-    standChild->pokers = node->pokers;
-    standChild->value = 0;
-    standChild->visits = 0;
-    node->children[standNodeIndex] = standChild;
-
-    // 為HIT動作創建多個子節點，每個代表不同的抽牌結果
-    int hitNodesCount = HIT_SIMULATION_COUNT;  // 預留一個給STAND
-
-    // 確保卡池不為空
-    if (!node->cardPool.empty()) {
-      for (int i = 0; i < hitNodesCount; ++i) {
-        if (i + 1 >= MAX_CHILDREN) break;  // 防止越界
-
-        auto child = std::make_shared<Node>();
-        child->parent = node;
-        child->action = Action::HIT;
-        child->cardPool = node->cardPool;
-        child->pokers = node->pokers;
-        child->value = 0;
-        child->visits = 0;
-
-        // 隨機抽一張牌
-        if (!child->cardPool.empty()) {
-          std::uniform_int_distribution<int> dist(0,
-                                                  child->cardPool.size() - 1);
-          int cardIndex = dist(_rng);
-          child->pokers.push_back(child->cardPool[cardIndex]);
-          child->cardPool.erase(child->cardPool.begin() + cardIndex);
-        }
-
-        node->children[i + 1] = child;  // i+1因為索引0已用於STAND
-      }
-    }
-
-    return;  // 已處理完HIT情況，直接返回
-  }
-
   // 其他動作的原始處理邏輯
-  for (int i = 0; i < ACTION_COUNT; ++i) {
+  for (int i = 0; i < MAX_CHILDREN; ++i) {
     Action currentAction = static_cast<Action>(i);
 
     // 根據遊戲階段和當前狀態檢查動作合法性
@@ -197,6 +152,7 @@ void mcts::MCTS::expansion(std::shared_ptr<Node> node) {
     child->cardPool = node->cardPool;
     child->pokers = node->pokers;
     child->value = 0;
+    child->drawCount = node->drawCount + 1;
     child->visits = 0;
     node->children[i] = child;
   }
@@ -251,8 +207,12 @@ double mcts::MCTS::playout(std::shared_ptr<Node> node) {
       double result = 0;
       switch (node->action) {
         case Action::HIT:
-          playerPokersCopy.push_back(cardPoolCopy.back());
-          cardPoolCopy.pop_back();
+          for(int j = 0; j < node->drawCount; j++) {
+            if (!cardPoolCopy.empty()) {
+              playerPokersCopy.push_back(cardPoolCopy.back());
+              cardPoolCopy.pop_back();
+            }
+          }
           break;
         case Action::STAND:
           break;

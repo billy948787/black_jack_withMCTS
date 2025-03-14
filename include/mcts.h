@@ -10,11 +10,7 @@
 #include "poker.h"
 #include "thread_pool.h"
 
-// Action 枚舉的數量
-#define ACTION_COUNT 5
-// 總子節點數量 = ACTION_COUNT(基本動作) + HIT_SIMULATION_COUNT(HIT模擬分支)
-#define HIT_SIMULATION_COUNT 20
-#define MAX_CHILDREN (ACTION_COUNT + HIT_SIMULATION_COUNT)
+#define MAX_CHILDREN 5
 
 const double SPECIAL_WIN_VALUE = 62.5 / 75;
 const double NORMAL_WIN_VALUE = 50.0 / 75;
@@ -45,6 +41,8 @@ class Node {
   double value;
 
   int visits;
+
+  int drawCount;
 
   std::vector<Poker> pokers;
   std::vector<Poker> cardPool;
