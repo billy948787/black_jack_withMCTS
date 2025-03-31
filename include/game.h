@@ -59,7 +59,6 @@ class Game {
 
   void _kickOut();
   bool _isSoft17(std::vector<Poker> &cards);
-  friend class Operation;
 
  public:
   static Game &getInstance();
