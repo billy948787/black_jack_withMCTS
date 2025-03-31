@@ -4,14 +4,14 @@
 
 #include "ai_operation.h"
 
-Player::Player(std::string name, Operation& operation)
+Player::Player(std::string name, Operation* operation)
     : _money(100000),
       _isBanker(false),
       _doubled(false),
       _surrendered(false),
       _hasInsurance(false),
       _gainedFromLastRound(0),
-      _operationController(operation),
+      operation(operation),
       _bet(0),
       _isOut(false),
       _name(name) {
@@ -140,8 +140,4 @@ int Player::getPoint() {
   }
 
   return point;
-}
-
-void Player::changeOperation(Operation& operation) {
-  _operationController.changeOperation(operation);
 }

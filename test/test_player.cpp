@@ -26,7 +26,7 @@ class MockOperation : public Operation {  // Just for inject mock operation
 
 TEST(PlayerTest, TestPlayer) {
   std::shared_ptr<Player> player =
-      std::make_shared<Player>("test", *new MockOperation());
+      std::make_shared<Player>("test", new MockOperation());
 
   Poker pokerA(spade, "A");
   Poker poker2(spade, "2");
@@ -64,7 +64,7 @@ TEST(PlayerTest, TestPlayer) {
   player.reset();
   EXPECT_EQ(player, nullptr);
 
-  player = std::make_shared<Player>("test", *new MockOperation());
+  player = std::make_shared<Player>("test", new MockOperation());
 
   player->addPoker(pokerA);
   player->addPoker(pokerA);
@@ -85,7 +85,7 @@ TEST(PlayerTest, TestPlayer) {
 
   player.reset();
 
-  player = std::make_shared<Player>("test", *new MockOperation());
+  player = std::make_shared<Player>("test", new MockOperation());
 
   player->addPoker(pokerQ);
   player->addPoker(pokerJ);
@@ -93,7 +93,7 @@ TEST(PlayerTest, TestPlayer) {
 
   player.reset();
 
-  player = std::make_shared<Player>("test", *new MockOperation());
+  player = std::make_shared<Player>("test", new MockOperation());
   player->addPoker(pokerK);
   player->addPoker(pokerA);
 
@@ -101,14 +101,14 @@ TEST(PlayerTest, TestPlayer) {
 
   player.reset();
 
-  player = std::make_shared<Player>("test", *new MockOperation());
+  player = std::make_shared<Player>("test", new MockOperation());
 
   player->addPoker(pokerA);
   player->addPoker(poker10);
   player->addPoker(pokerA);
   EXPECT_EQ(player->getPoint(), 12);
   player.reset();
-  player = std::make_shared<Player>("test", *new MockOperation());
+  player = std::make_shared<Player>("test", new MockOperation());
 
   // 測試A的多種組合情況
   player->addPoker(pokerA);  // A = 11
@@ -119,7 +119,7 @@ TEST(PlayerTest, TestPlayer) {
   EXPECT_EQ(player->getPoint(), 12);
 
   player.reset();
-  player = std::make_shared<Player>("test", *new MockOperation());
+  player = std::make_shared<Player>("test", new MockOperation());
 
   // 測試多張A的動態調整
   player->addPoker(pokerA);  // A = 11
@@ -131,7 +131,7 @@ TEST(PlayerTest, TestPlayer) {
   EXPECT_EQ(player->getPoint(), 16);
 
   player.reset();
-  player = std::make_shared<Player>("test", *new MockOperation());
+  player = std::make_shared<Player>("test", new MockOperation());
 
   // 測試接近21點的邊界情況
   player->addPoker(poker10);  // 10
@@ -141,7 +141,7 @@ TEST(PlayerTest, TestPlayer) {
   EXPECT_EQ(player->getPoint(), 21);
 
   player.reset();
-  player = std::make_shared<Player>("test", *new MockOperation());
+  player = std::make_shared<Player>("test", new MockOperation());
 
   // 測試超過21點的情況
   player->addPoker(poker10);  // 10
@@ -150,7 +150,7 @@ TEST(PlayerTest, TestPlayer) {
   EXPECT_EQ(player->getPoint(), 23);
 
   player.reset();
-  player = std::make_shared<Player>("test", *new MockOperation());
+  player = std::make_shared<Player>("test", new MockOperation());
 
   // 測試多張A和面牌的組合
   player->addPoker(pokerA);  // A = 11
@@ -163,7 +163,7 @@ TEST(PlayerTest, TestPlayer) {
   EXPECT_EQ(player->getPoint(), 12);  // 超過21點后，所有A都應該算作1
 
   player.reset();
-  player = std::make_shared<Player>("test", *new MockOperation());
+  player = std::make_shared<Player>("test", new MockOperation());
 
   // 測試黑傑克 (A + 10)
   player->addPoker(pokerA);  // A
@@ -172,7 +172,7 @@ TEST(PlayerTest, TestPlayer) {
 
   // 測試不同花色相同大小的牌
   player.reset();
-  player = std::make_shared<Player>("test", *new MockOperation());
+  player = std::make_shared<Player>("test", new MockOperation());
 
   player->addPoker(Poker(spade, "10"));  // 黑桃10
   player->addPoker(Poker(heart, "10"));  // 紅心10
@@ -180,7 +180,7 @@ TEST(PlayerTest, TestPlayer) {
   EXPECT_EQ(player->getPoint(), 30);
 
   player.reset();
-  player = std::make_shared<Player>("test", *new MockOperation());
+  player = std::make_shared<Player>("test", new MockOperation());
 
   // 測試所有四張A的組合
   player->addPoker(pokerA);  // A = 11
@@ -199,7 +199,7 @@ TEST(PlayerTest, TestPlayer) {
   EXPECT_EQ(player->getPoint(), 12);  // 1 + 1 + 1 + 1 + 8 = 12
 
   player.reset();
-  player = std::make_shared<Player>("test", *new MockOperation());
+  player = std::make_shared<Player>("test", new MockOperation());
 
   // 測試面牌組合
   player->addPoker(pokerJ);  // J = 10
@@ -208,7 +208,7 @@ TEST(PlayerTest, TestPlayer) {
   EXPECT_EQ(player->getPoint(), 30);
 
   player.reset();
-  player = std::make_shared<Player>("test", *new MockOperation());
+  player = std::make_shared<Player>("test", new MockOperation());
 
   // 測試精確的21點組合
   player->addPoker(poker7);  // 7
@@ -217,7 +217,7 @@ TEST(PlayerTest, TestPlayer) {
   EXPECT_EQ(player->getPoint(), 21);
 
   player.reset();
-  player = std::make_shared<Player>("test", *new MockOperation());
+  player = std::make_shared<Player>("test", new MockOperation());
 
   // 測試A從11轉為1再轉回的情況
   player->addPoker(pokerA);  // A = 11
@@ -227,7 +227,7 @@ TEST(PlayerTest, TestPlayer) {
   EXPECT_EQ(player->getPoint(), 20);
 
   player.reset();
-  player = std::make_shared<Player>("test", *new MockOperation());
+  player = std::make_shared<Player>("test", new MockOperation());
 
   // 測試多張A交替的情況
   player->addPoker(pokerA);        // A = 11
@@ -239,7 +239,7 @@ TEST(PlayerTest, TestPlayer) {
   EXPECT_EQ(player->getPoint(), 12);  // 1 + 5 + 1 + 2 + 1 + 2 = 12
 
   player.reset();
-  player = std::make_shared<Player>("test", *new MockOperation());
+  player = std::make_shared<Player>("test", new MockOperation());
 
   // 測試剛好爆牌的情況
   player->addPoker(poker10);  // 10
@@ -249,7 +249,7 @@ TEST(PlayerTest, TestPlayer) {
   EXPECT_EQ(player->getPoint(), 23);
 
   player.reset();
-  player = std::make_shared<Player>("test", *new MockOperation());
+  player = std::make_shared<Player>("test", new MockOperation());
 
   // 測試不同黑傑克組合
   player->addPoker(pokerA);  // A = 11
@@ -257,14 +257,14 @@ TEST(PlayerTest, TestPlayer) {
   EXPECT_EQ(player->getPoint(), 21);
 
   player.reset();
-  player = std::make_shared<Player>("test", *new MockOperation());
+  player = std::make_shared<Player>("test", new MockOperation());
 
   player->addPoker(pokerK);  // K = 10
   player->addPoker(pokerA);  // K + A = 21
   EXPECT_EQ(player->getPoint(), 21);
 
   player.reset();
-  player = std::make_shared<Player>("test", *new MockOperation());
+  player = std::make_shared<Player>("test", new MockOperation());
 
   // 測試邊界情況：從爆牌到不爆牌
   player->addPoker(poker10);  // 10
@@ -273,7 +273,7 @@ TEST(PlayerTest, TestPlayer) {
   EXPECT_EQ(player->getPoint(), 20);
 
   player.reset();
-  player = std::make_shared<Player>("test", *new MockOperation());
+  player = std::make_shared<Player>("test", new MockOperation());
 
   // 測試連續添加小牌直到爆牌
   player->addPoker(poker5);  // 5

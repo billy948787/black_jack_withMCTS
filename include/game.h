@@ -7,7 +7,6 @@
 #include "default_operation.h"
 #include "manual_operation.h"
 #include "operation.h"
-#include "operation_controller.h"
 #include "player.h"
 #include "poker.h"
 

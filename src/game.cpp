@@ -33,9 +33,9 @@ void Game::start(bool isTestMode) {
     int totalGames = 10000;
     int totalProfit = 0;
 
-    Player defaultPlayer("Default", *new DefaultOperation());
-    Player defaultPlayer2("Default2", *new DefaultOperation());
-    Player aiPlayer("AI", *new AIOperation());
+    Player defaultPlayer("Default", new DefaultOperation());
+    Player defaultPlayer2("Default2", new DefaultOperation());
+    Player aiPlayer("AI", new AIOperation());
 
     _players.push_back(defaultPlayer);
     _players.push_back(aiPlayer);
@@ -146,11 +146,11 @@ void Game::start(bool isTestMode) {
   std::string name;
   std::cin >> name;
   // create player
-  _players.push_back(Player(name, *new ManualOperation()));
+  _players.push_back(Player(name, new ManualOperation()));
 
   for (int i = 1; i < _playerCount; i++) {
     _players.push_back(
-        Player("Player" + std::to_string(i + 1) + "(AI)", *new AIOperation()));
+        Player("Player" + std::to_string(i + 1) + "(AI)", new AIOperation()));
   }
 
   _currentRound = 0;
@@ -469,7 +469,7 @@ void Game::_askForStake() {
 
     std::cout << player.getName() << " : ";
 
-    int stake = player._operationController.stake(
+    int stake = player.operation->stake(
         player.getMoney(), _banker->getPokers(), _cardPool);
 
     _printAction("stake " + std::to_string(stake), player._isAI);
@@ -561,7 +561,7 @@ void Game::_askInsuranceForAllPlayers() {
       std::vector<Poker> knownCardPool = _cardPool;
       knownCardPool.push_back(_banker->getPokers()[1]);
 
-      bool takeInsurance = player._operationController.insurance(
+      bool takeInsurance = player.operation->insurance(
           player.getPokers(), dealerVisibleCards, knownCardPool);
       if (takeInsurance) {
         player._hasInsurance = true;
@@ -586,7 +586,7 @@ void Game::_askForDoubleOrSurrender() {
     knownCardPool.push_back(_banker->getPokers()[1]);
 
     std::map<std::string, bool> result =
-        player._operationController.doubleOrSurrender(
+        player.operation->doubleOrSurrender(
             player.getPokers(), dealerVisibleCards, knownCardPool);
 
     if (result["double"]) {
@@ -639,7 +639,7 @@ void Game::_drawForAllPlayers() {
       std::vector<Poker> knownCardPool = _cardPool;
       knownCardPool.push_back(_banker->getPokers()[1]);
 
-      bool toHit = player._operationController.hit(
+      bool toHit = player.operation->hit(
           player.getPokers(), dealerVisibleCards, knownCardPool);
 
       if (toHit) {

@@ -2,13 +2,11 @@
 #define PLAYER_H
 #include <vector>
 
-#include "poker.h"
 #include "operation.h"
-#include "operation_controller.h"
+#include "poker.h"
 
-class Player
-{
-private:
+class Player {
+ private:
   std::vector<Poker> _pokers;
   int _money;
   int _bet;
@@ -21,18 +19,15 @@ private:
   bool _hasInsurance;
   bool _isAI;
 
-
-  OperationController _operationController;
+  Operation *operation;
 
   std::string _name;
 
   friend class Game;
-  friend class ManualOperation;
-  friend class AIOperation;
   friend class Dealer;
 
-public:
-  Player(std::string, Operation &);
+ public:
+  Player(std::string, Operation *);
   void switchBanker();
   int getMoney();
   void addMoney(int);
@@ -51,7 +46,6 @@ public:
   std::string getName();
   void addPoker(Poker);
   void clearPoker();
-  void changeOperation(Operation &);
   int getProfit();
   int getPoint();
   int getBet();
